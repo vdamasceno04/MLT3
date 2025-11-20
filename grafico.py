@@ -14,7 +14,6 @@ class PlotadorInterativo:
         plt.subplots_adjust(bottom=0.2)
         
         # Plota o sinal INTEIRO uma vez
-        # Adicionamos o último ponto repetido para fechar o degrau visualmente
         x_axis = range(self.total_bits + 1)
         y_axis = self.signal + [self.signal[-1]]
         self.ax.step(x_axis, y_axis, where='post', linewidth=2, color='#007acc')

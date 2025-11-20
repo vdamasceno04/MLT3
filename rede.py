@@ -1,7 +1,7 @@
 import socket
 import json
 
-PORTA = 65432  # Porta padrão para o seu trabalho
+PORTA = 65432  # Porta padrão
 
 def enviar_sinal(ip_destino, lista_sinal_mlt3):
     """
@@ -32,7 +32,6 @@ def receber_sinal():
     print(f"Aguardando conexão na porta {PORTA}...")
     print(f"Descubra seu IP com o comando 'ip a' e informe ao Host A.")
 
-    # 0.0.0.0 significa "aceitar conexões de qualquer IP na rede"
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(('0.0.0.0', PORTA))
         s.listen()

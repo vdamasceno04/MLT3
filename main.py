@@ -14,7 +14,7 @@ if modo == '1':
     
     # 1. Interface e Input
     frase_lista = interface.getSentence() # Sua função original
-    frase_completa = "\n".join(frase_lista) # Caso sua função retorne lista
+    frase_completa = frase_lista.strip() # Caso sua função retorne lista
 
     if frase_completa.strip():
         # 2. Criptografia e Binário
@@ -59,19 +59,17 @@ elif modo == '2':
     stream_binaria_recuperada = mlt3.mlt3_decode(sinal_recebido)
     
     # 4. Processo Inverso: Binário -> Bytes
-    # OBS: Você precisa criar essa função no seu encryption.py se não tiver
-    # Ela pega "01000001..." e vira bytes b'A...'
-    bytes_criptografados_recuperados = encryption.from_binary_stream(stream_binaria_recuperada)
+    bytes_criptografados_recuperados = encryption.binary_stream_to_bytes(stream_binaria_recuperada)
     
     # 5. Processo Inverso: Descriptografar
     try:
         bytes_originais_recuperados = encryption.decrypt(bytes_criptografados_recuperados)
-        frase_final = bytes_originais_recuperados.decode('latin-1') # ou utf-8 dependendo do seu encryption
+        frase_final = bytes_originais_recuperados.decode('latin-1') 
         
         print("\n--- MENSAGEM RECUPERADA ---")
         print(f"Conteúdo: {frase_final}")
         
-        # Mostra na interface (Opcional, mas legal)
+        # Mostra na interface
         import tkinter as tk
         from tkinter import messagebox
         root = tk.Tk()
