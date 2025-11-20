@@ -1,27 +1,31 @@
-# Recebe um binário e retorna um vetor com valores em [0, 1, 2]
 def mlt3_encode(bin):
+    v = 5
     mlt3 = []
-    last = 1
-    adder = 1
+    last_non_zero = -v
+    state = 0
     for bit in bin:
         if bit == '0':
-            mlt3.append(last)
+            mlt3.append(state)
         elif bit == '1':
-            if (last == 2 or last == 0):
-                adder = -adder
-            mlt3.append(last + adder)
-            last = last + adder
+            if state == v or state == -v:
+                state = 0
+                mlt3.append(state)
+            else:
+                last_non_zero *= -1
+                state = last_non_zero
+                mlt3.append(state)
+            
     return mlt3
 
 
 def mlt3_decode(mlt3):
     bin = []
-    last = 1
+    state = 0
     for value in mlt3:
-        if value == last:
+        if value == state:
             bin.append(0)
         else:
             bin.append(1)
-        last = value
+        state = value
 
     return ''.join(str(num) for num in bin)
