@@ -25,12 +25,12 @@ if modo == '1':
         # 3. Codificação de Linha
         sinal_mlt3 = mlt3.mlt3_encode(stream_binaria)
 
-        print("\n--- HOST A: DADOS PROCESSADOS ---")
-        print(f"Frase Original: {frase_completa}")
-        print(f"Binário Cripto: {stream_binaria[:50]}...") # Mostra só o começo pra não poluir
+        # Prepara visualização Hex da criptografia (mais bonito que bytes brutos)
+        cripto_hex = bytes_criptografados.hex().upper()
+
+        interface.show_report("Host A - Processamento", frase_completa, cripto_hex, stream_binaria)
         
-        # 4. Plotar Gráfico de Envio (Bloqueia até fechar a janela)
-        print("Feche o gráfico para continuar o envio...")
+        # Gráfico
         grafico.PlotadorInterativo(sinal_mlt3)
 
         # 5. Enviar pela Rede
@@ -51,35 +51,28 @@ elif modo == '2':
     
     print(f"\nSinal Recebido ({len(sinal_recebido)} amostras).")
     
-    # 2. Plotar Gráfico de Recepção (Requisito T2 e T8)
-    print("Feche o gráfico para continuar a decodificação...")
+    # Gráfico (Mostra o sinal físico que chegou)
     grafico.PlotadorInterativo(sinal_recebido)
     
-    # 3. Processo Inverso: Decodificar MLT-3 -> Binário
+    # Decodificação
     stream_binaria_recuperada = mlt3.mlt3_decode(sinal_recebido)
-    
-    # 4. Processo Inverso: Binário -> Bytes
     bytes_criptografados_recuperados = encryption.binary_stream_to_bytes(stream_binaria_recuperada)
     
-    # 5. Processo Inverso: Descriptografar
     try:
         bytes_originais_recuperados = encryption.decrypt(bytes_criptografados_recuperados)
         frase_final = bytes_originais_recuperados.decode('latin-1') 
         
-        print("\n--- MENSAGEM RECUPERADA ---")
-        print(f"Conteúdo: {frase_final}")
+        cripto_hex = bytes_criptografados_recuperados.hex().upper()
         
-        # Mostra na interface
-        import tkinter as tk
-        from tkinter import messagebox
-        root = tk.Tk()
-        root.withdraw()
-        messagebox.showinfo("Mensagem Recebida", f"A mensagem foi:\n\n{frase_final}")
-        root.destroy()
+        interface.show_report(
+            titulo="Host B - Relatório de Decodificação", 
+            texto_claro=frase_final, 
+            texto_cripto=cripto_hex, 
+            texto_binario=stream_binaria_recuperada,
+            lbl_claro="3. MENSAGEM FINAL RECUPERADA:",
+            lbl_cripto="2. Dados Criptografados Recebidos:",
+            lbl_bin="1. Stream Binária Demodulada:"
+        )
         
     except Exception as e:
         print(f"Erro na descriptografia: {e}")
-        print("Verifique se a chave é a mesma em ambas as máquinas!")
-
-else:
-    print("Opção inválida.")
