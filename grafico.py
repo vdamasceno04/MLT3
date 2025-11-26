@@ -2,68 +2,72 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
 
 class PlotadorInterativo:
-    def __init__(self, signal_data, bits_por_pagina=100):
-        self.signal = signal_data
-        self.total_bits = len(signal_data)
-        self.page_size = bits_por_pagina
-        self.current_start = 0
+    def __init__(self, lista_sinal, mostrar_quantos=100):
+        self.dados = lista_sinal
+        self.total = len(lista_sinal)
+        self.quanto_mostra = mostrar_quantos
+        self.onde_comeca = 0
         
-        # Configura a Figura e o Eixo
-        # Espaço embaixo (bottom=0.2) para os botões
-        self.fig, self.ax = plt.subplots(figsize=(10, 5))
+        # Cria a janela do gráfico
+        # O 'bottom=0.2' é pra sobrar espaço pros botões lá embaixo
+        self.figura, self.eixo = plt.subplots(figsize=(10, 5))
         plt.subplots_adjust(bottom=0.2)
         
-        # Plota o sinal INTEIRO uma vez
-        x_axis = range(self.total_bits + 1)
-        y_axis = self.signal + [self.signal[-1]]
-        self.ax.step(x_axis, y_axis, where='post', linewidth=2, color='#007acc')
+        # Truque pro gráfico de degrau ficar certo no final: repete o último ponto
+        # Senão o último bit some
+        eixo_x = range(self.total + 1)
+        eixo_y = self.dados + [self.dados[-1]]
         
-        # Configurações visuais fixas
-        self.ax.set_yticks([-5, 0, 5])
-        self.ax.set_ylim(-6, 6)
-        self.ax.grid(True, which='both', linestyle='--', alpha=0.6)
-        self.ax.axhline(0, color='black', linewidth=1)
-        self.ax.set_ylabel('Tensão (Volts)')
+        # Desenha a linha azul ('step' faz o formato de onda quadrada)
+        self.eixo.step(eixo_x, eixo_y, where='post', linewidth=2, color='#007acc')
         
-        # Inicializa a primeira visualização
-        self.atualizar_visualizacao()
+        # Deixa bonitinho (Eixos Y fixos em -5, 0 e 5)
+        self.eixo.set_yticks([-5, 0, 5])
+        self.eixo.set_ylim(-6, 6) # Dá uma margem pra não colar na borda
+        self.eixo.grid(True, linestyle='--', alpha=0.6) # Gradezinha de fundo
+        self.eixo.axhline(0, color='black', linewidth=1) # Linha do zero pra referência
+        self.eixo.set_ylabel('Tensão (V)')
         
-        # --- CRIAÇÃO DOS BOTÕES ---
-        # Define a posição dos botões [x, y, largura, altura]
-        ax_prev = plt.axes([0.3, 0.05, 0.15, 0.075])
-        ax_next = plt.axes([0.55, 0.05, 0.15, 0.075])
+        # Chama a função que arruma o zoom inicial
+        self.atualiza_tela()
         
-        # Cria os objetos Button e guarda referências 
-        self.btn_prev = Button(ax_prev, '< Anterior')
-        self.btn_next = Button(ax_next, 'Próximo >')
+        # --- BOTÕES ---
+        # Posição: [esquerda, baixo, largura, altura]
+        posicao_botao1 = plt.axes([0.3, 0.05, 0.15, 0.075])
+        posicao_botao2 = plt.axes([0.55, 0.05, 0.15, 0.075])
         
-        # Conecta os cliques às funções
-        self.btn_prev.on_clicked(self.voltar_pagina)
-        self.btn_next.on_clicked(self.avancar_pagina)
+        # Cria os botões e guarda na memória (senão o Python deleta e eles somem/não funcionam)
+        self.botao_volta = Button(posicao_botao1, '< Anterior')
+        self.botao_vai = Button(posicao_botao2, 'Próximo >')
+        
+        # Diz o que fazer quando clica
+        self.botao_volta.on_clicked(self.voltar)
+        self.botao_vai.on_clicked(self.avancar)
         
         plt.show()
 
-    def atualizar_visualizacao(self):
-        """Atualiza o limite do eixo X para criar o efeito de paginação"""
-        start = self.current_start
-        end = start + self.page_size
+    def atualiza_tela(self):
+        """ Só muda o zoom do eixo X pra parecer que tá paginando """
+        inicio = self.onde_comeca
+        fim = inicio + self.quanto_mostra
         
-        # Define o limite do Zoom no eixo X
-        self.ax.set_xlim(start, end)
+        # Define o limite do Zoom
+        self.eixo.set_xlim(inicio, fim)
         
-        # Atualiza o Título com a posição atual
-        self.ax.set_title(f'Codificação MLT-3 (Bits {start} a {min(end, self.total_bits)} de {self.total_bits})')
+        # Título dinâmico pra saber onde tá
+        self.eixo.set_title(f'Visualizando Sinal MLT-3 (Amostras {inicio} até {min(fim, self.total)})')
         
-        # Força o redesenho do gráfico
+        # Manda redesenhar
         plt.draw()
 
-    def avancar_pagina(self, event):
-        if self.current_start + self.page_size < self.total_bits:
-            self.current_start += self.page_size
-            self.atualizar_visualizacao()
+    def avancar(self, evento):
+        # Só avança se não tiver chegado no fim da lista
+        if self.onde_comeca + self.quanto_mostra < self.total:
+            self.onde_comeca += self.quanto_mostra
+            self.atualiza_tela()
 
-    def voltar_pagina(self, event):
-        if self.current_start - self.page_size >= 0:
-            self.current_start -= self.page_size
-            self.atualizar_visualizacao()
-
+    def voltar(self, evento):
+        # Só volta se não tiver no começo
+        if self.onde_comeca - self.quanto_mostra >= 0:
+            self.onde_comeca -= self.quanto_mostra
+            self.atualiza_tela()

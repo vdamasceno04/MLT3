@@ -3,11 +3,11 @@ import mlt3
 
 # --- BLOCO DE TESTE ---
 if __name__ == "__main__":
-    input_binaria = "01011100101"
+    input_binaria = "01011011"
 
     sinal_mlt3 = mlt3.mlt3_encode(input_binaria)
 
-    grafico.PlotadorInterativo(sinal_mlt3)
+    grafico.PlotadorInterativo(sinal_mlt3,10)
 
     output_binaria = mlt3.mlt3_decode(sinal_mlt3)
 

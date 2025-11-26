@@ -1,53 +1,56 @@
 import socket
 import json
 
-PORTA = 65432  # Porta padrão
+# Porta aleatória alta pra não dar conflito no PC
+PORTA_DO_ROLE = 65432
 
-def enviar_sinal(ip_destino, lista_sinal_mlt3):
-    """
-    Conecta no outro PC e envia a lista do sinal MLT-3.
-    """
+def enviar_sinal(ip_do_camarada, lista_do_sinal):
+    # Tenta conectar no outro PC e jogar a lista lá
     try:
-        # 1. Serializa a lista para JSON (transforma em texto)
-        dados_json = json.dumps(lista_sinal_mlt3)
-        dados_bytes = dados_json.encode('utf-8')
+        # Transforma a lista do Python num textão (JSON) e depois em bytes
+        # pq o socket é chato e só aceita byte
+        pacote_texto = json.dumps(lista_do_sinal)
+        pacote_bytes = pacote_texto.encode('utf-8')
 
-        # 2. Cria o socket e conecta
-        print(f"Tentando conectar em {ip_destino}:{PORTA}...")
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.connect((ip_destino, PORTA))
-            s.sendall(dados_bytes)
-            print("Dados enviados com sucesso!")
+        print(f"Batendo na porta do IP {ip_do_camarada}...")
+        
+        # Cria o 'telefone' (socket) e disca pro amigo
+        # AF_INET = IPv4, SOCK_STREAM = TCP (garante que chega)
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as canal:
+            canal.connect((ip_do_camarada, PORTA_DO_ROLE))
+            canal.sendall(pacote_bytes)
+            print("Enviado com sucesso!")
             
     except ConnectionRefusedError:
-        print("ERRO: Não foi possível conectar. O Host B está ouvindo?")
+        print("VISH: Ninguém atendeu. O Host B tá rodando o código?")
     except Exception as e:
-        print(f"ERRO de Rede: {e}")
+        print(f"Deu ruim na rede: {e}")
 
 def receber_sinal():
-    """
-    Fica ouvindo na porta e espera receber os dados.
-    Retorna a lista do sinal MLT-3 quando chegar.
-    """
-    print(f"Aguardando conexão na porta {PORTA}...")
-    print(f"Descubra seu IP com o comando 'ip a' e informe ao Host A.")
+    # Fica plantado esperando chegar conexão
+    print(f"Ouvindo tudo na porta {PORTA_DO_ROLE}...")
+    print(f"Vê teu IP aí (ip a / ipconfig) e passa pro Host A.")
 
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(('0.0.0.0', PORTA))
-        s.listen()
-        conn, addr = s.accept()
+    # 0.0.0.0 aceita conexão de qualquer placa de rede do PC
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as servidor:
+        servidor.bind(('0.0.0.0', PORTA_DO_ROLE))
+        servidor.listen()
         
-        with conn:
-            print(f"Conectado por {addr}")
-            buffer_dados = b""
+        # O código trava nessa linha até alguém conectar
+        conexao, endereco_do_remetente = servidor.accept()
+        
+        with conexao:
+            print(f"Opa, conectou gente do IP: {endereco_do_remetente}")
+            tudo_que_chegou = b""
             
-            # Recebe os dados em pedaços (chunks)
+            # Loop pra pegar os dados em pedacinhos de 4kb
             while True:
-                pedaco = conn.recv(4096)
-                if not pedaco:
+                pedacinho = conexao.recv(4096)
+                if not pedacinho:
+                    # Se veio vazio, acabou a transmissão
                     break
-                buffer_dados += pedaco
+                tudo_que_chegou += pedacinho
             
-            # Decodifica o JSON de volta para Lista Python
-            lista_recebida = json.loads(buffer_dados.decode('utf-8'))
-            return lista_recebida
+            # Transforma a bagunça de bytes de volta pra Lista Python
+            lista_final = json.loads(tudo_que_chegou.decode('utf-8'))
+            return lista_final

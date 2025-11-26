@@ -5,74 +5,81 @@ import grafico
 import rede 
 
 print("--- TRABALHO DE COMUNICAÇÃO DE DADOS ---")
-modo = input("Escolha o modo:\n[1] HOST A (Enviar)\n[2] HOST B (Receber)\n> ")
+print("Quem é você na fila do pão?")
+modo = input("[1] HOST A (Manda)\n[2] HOST B (Recebe)\n> ")
 
 if modo == '1':
     # =================================================================
-    # FLUXO DO HOST A (TRANSMISSOR)
+    # LADO A: O CARA QUE MANDA
     # =================================================================
     
-    # 1. Interface e Input
-    frase_lista = interface.getSentence() # Sua função original
-    frase_completa = frase_lista.strip() # Caso sua função retorne lista
+    # Pega o texto da interface gráfica ou console
+    texto_baguncado = interface.getSentence() 
+    texto_limpo = texto_baguncado.strip()
 
-    if frase_completa.strip():
-        # 2. Criptografia e Binário
-        bytes_originais = encryption.to_bytes(frase_completa)
-        bytes_criptografados = encryption.encrypt(bytes_originais)
-        stream_binaria = encryption.to_binary_stream(bytes_criptografados)
+    if texto_limpo:
+        # Transforma texto em bytes e tranca com a senha
+        bytes_normais = encryption.texto_pra_bytes(texto_limpo)
+        bytes_trancados = encryption.criptografar_tudo(bytes_normais)
         
-        # 3. Codificação de Linha
-        sinal_mlt3 = mlt3.mlt3_encode(stream_binaria)
-
-        # Prepara visualização Hex da criptografia (mais bonito que bytes brutos)
-        cripto_hex = bytes_criptografados.hex().upper()
-
-        interface.show_report("Host A - Processamento", frase_completa, cripto_hex, stream_binaria)
+        # Vira aquela tripa de 0 e 1 (string gigante)
+        tripa_bits = encryption.bytes_pra_binario_string(bytes_trancados)
         
-        # Gráfico
-        grafico.PlotadorInterativo(sinal_mlt3)
+        # Aplica o MLT-3 pra virar sinal "elétrico" (V, 0, -V)
+        sinal_pronto = mlt3.mlt3_encode(tripa_bits)
 
-        # 5. Enviar pela Rede
-        ip_destino = input("\nDigite o IP do Host B: ")
-        rede.enviar_sinal(ip_destino, sinal_mlt3)
+        # Só pra ficar bonito no print (hexadecimal)
+        visual_hex = bytes_trancados.hex().upper()
+
+        interface.show_report("Host A - Enviando...", texto_limpo, visual_hex, tripa_bits)
+        
+        # Mostra o gráfico do sinal saindo
+        grafico.PlotadorInterativo(sinal_pronto)
+
+        # Manda ver na rede
+        ip_do_amigo = input("\nQual o IP do camarada (Host B)? ")
+        rede.enviar_sinal(ip_do_amigo, sinal_pronto)
         
     else:
-        print("Nenhuma frase digitada.")
+        print("Escreve alguma coisa né...")
 
 elif modo == '2':
     # =================================================================
-    # FLUXO DO HOST B (RECEPTOR)
+    # LADO B: O CARA QUE RECEBE
     # =================================================================
     
-    # 1. Esperar receber o sinal pela rede
-    print("\n--- HOST B: MODO ESCUTA ---")
-    sinal_recebido = rede.receber_sinal()
+    print("\n--- HOST B: FICA ESPERANDO ---")
+    # Fica travado aqui até chegar algo
+    sinal_que_chegou = rede.receber_sinal()
     
-    print(f"\nSinal Recebido ({len(sinal_recebido)} amostras).")
+    print(f"\nChegou coisa! ({len(sinal_que_chegou)} amostras).")
     
-    # Gráfico (Mostra o sinal físico que chegou)
-    grafico.PlotadorInterativo(sinal_recebido)
+    # Mostra o que chegou 
+    grafico.PlotadorInterativo(sinal_que_chegou)
     
-    # Decodificação
-    stream_binaria_recuperada = mlt3.mlt3_decode(sinal_recebido)
-    bytes_criptografados_recuperados = encryption.binary_stream_to_bytes(stream_binaria_recuperada)
+    # Tenta desfazer a bagunça
+    # 1. Tira do MLT-3 e volta pra 0 e 1
+    bits_recuperados = mlt3.mlt3_decode(sinal_que_chegou)
+    
+    # 2. Junta os bits em bytes de novo (ainda criptografados)
+    bytes_trancados_volta = encryption.binario_string_pra_bytes(bits_recuperados)
     
     try:
-        bytes_originais_recuperados = encryption.decrypt(bytes_criptografados_recuperados)
-        frase_final = bytes_originais_recuperados.decode('latin-1') 
+        # 3. Tenta destrancar com a senha
+        bytes_destrancados = encryption.descriptografar_tudo(bytes_trancados_volta)
+        mensagem_final = encryption.bytes_pra_texto(bytes_destrancados) 
         
-        cripto_hex = bytes_criptografados_recuperados.hex().upper()
+        visual_hex = bytes_trancados_volta.hex().upper()
         
         interface.show_report(
-            titulo="Host B - Relatório de Decodificação", 
-            texto_claro=frase_final, 
-            texto_cripto=cripto_hex, 
-            texto_binario=stream_binaria_recuperada,
-            lbl_claro="3. MENSAGEM FINAL RECUPERADA:",
-            lbl_cripto="2. Dados Criptografados Recebidos:",
-            lbl_bin="1. Stream Binária Demodulada:"
+            titulo="Host B - Sucesso", 
+            texto_claro=mensagem_final, 
+            texto_cripto=visual_hex, 
+            texto_binario=bits_recuperados,
+            lbl_claro="3. MENSAGEM FINAL:",
+            lbl_cripto="2. O que chegou trancado:",
+            lbl_bin="1. Bits brutos:"
         )
         
     except Exception as e:
-        print(f"Erro na descriptografia: {e}")
+        print(f"Deu ruim pra descriptografar: {e}")

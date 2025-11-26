@@ -3,76 +3,51 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from Crypto.Random import get_random_bytes
 
-# --- Configurações da Criptografia AES em modo CBC---
+# Configurações
+MINHA_SENHA = b"minha-chave"
+RODADAS = 100000
+TAMANHO_CHAVE = 16 
+TAMANHO_BLOCO = 16
 
-# Chave principal, deve ser a mesma para quem envia e quem recebe.
-KEY = b"minha-chave"
-
-# Número de 'embaralhamentos' para deixar a chave mais forte.
-ITERATIONS = 100000
-
-# Tamanho da chave em bytes (16 = AES-128).
-KEY_SIZE = 16 
-# Tamanho do bloco do AES (sempre 16 bytes).
-BLOCK_SIZE = 16
-
-# --- Funções de Conversão ---
-
-def to_bytes(texto: str) -> bytes:
-    """Converte texto para bytes (usando latin-1 para caracteres especiais)."""
+def texto_pra_bytes(texto: str) -> bytes:
     return texto.encode('latin-1')
 
-def bytes_to_text(data: bytes) -> str:
-    """Converte bytes de volta para texto."""
-    return data.decode('latin-1')
+def bytes_pra_texto(dados: bytes) -> str:
+    return dados.decode('latin-1')
 
-def to_binary_stream(data: bytes) -> str:
-    """Converte bytes para uma string de 0s e 1s."""
-    return "".join(f"{byte:08b}" for byte in data)
+def bytes_pra_binario_string(dados: bytes) -> str:
+    return "".join(f"{byte:08b}" for byte in dados)
 
-def binary_stream_to_bytes(bin_stream: str) -> bytes:
-    """Converte a string de 0s e 1s de volta para bytes."""
-    return bytes([int(bin_stream[i:i+8], 2) for i in range(0, len(bin_stream), 8)])
+def binario_string_pra_bytes(tripa_binaria: str) -> bytes:
+    lista_inteiros = [int(tripa_binaria[i:i+8], 2) for i in range(0, len(tripa_binaria), 8)]
+    return bytes(lista_inteiros)
 
 
-def encrypt(data_bytes: bytes) -> bytes:
-    """Criptografa os dados usando AES."""
+def criptografar_tudo(dados_em_bytes: bytes) -> bytes:
+    salzinho = get_random_bytes(16)
+    
+    # Deriva a chave usando PBKDF2
+    chave_tunada = hashlib.pbkdf2_hmac('sha256', MINHA_SENHA, salzinho, RODADAS, dklen=TAMANHO_CHAVE)
 
-    # Gera um 'salt' aleatório. Impede que textos iguais tenham resultados iguais.
-    salt = get_random_bytes(16)
+    cifrador = AES.new(chave_tunada, AES.MODE_CBC)
+    vetor_inicial = cifrador.iv
 
-    # Fortalece nossa chave principal usando o salt. Protege contra força bruta.
-    derived_key = hashlib.pbkdf2_hmac('sha256', KEY, salt, ITERATIONS, dklen=KEY_SIZE)
+    texto_baguncado = cifrador.encrypt(pad(dados_em_bytes, TAMANHO_BLOCO))
 
-    # Prepara a cifra AES no modo CBC, que liga um bloco ao outro.
-    # Um IV (Vetor de Inicialização) aleatório é criado para dar início ao processo.
-    cipher = AES.new(derived_key, AES.MODE_CBC)
-    iv = cipher.iv
-
-    # Garante que a mensagem tenha o tamanho certo para o AES (múltiplo de 16)
-    # e depois criptografa de fato.
-    ciphertext = cipher.encrypt(pad(data_bytes, BLOCK_SIZE))
-
-    # Monta o pacote final para envio: salt + iv + dados criptografados.
-    # O receptor vai precisar de tudo isso para reverter.
-    return salt + iv + ciphertext
+    # Retorna tudo junto: Salt + IV + Conteúdo
+    return salzinho + vetor_inicial + texto_baguncado
 
 
-def decrypt(encrypted_data: bytes) -> bytes:
-    """Descriptografa os dados recebidos."""
+def descriptografar_tudo(pacote_recebido: bytes) -> bytes:
+    # Separa os componentes
+    salzinho = pacote_recebido[:16]
+    vetor_inicial = pacote_recebido[16:32]
+    conteudo_trancado = pacote_recebido[32:]
 
-    # Separa o pacote recebido em suas três partes.
-    salt = encrypted_data[:16]
-    iv = encrypted_data[16:32]
-    ciphertext = encrypted_data[32:]
+    chave_tunada = hashlib.pbkdf2_hmac('sha256', MINHA_SENHA, salzinho, RODADAS, dklen=TAMANHO_CHAVE)
 
-    # Recria a chave exata que foi usada na criptografia, usando o salt recebido.
-    derived_key = hashlib.pbkdf2_hmac('sha256', KEY, salt, ITERATIONS, dklen=KEY_SIZE)
+    cifrador = AES.new(chave_tunada, AES.MODE_CBC, vetor_inicial)
+    
+    bytes_limpos = unpad(cifrador.decrypt(conteudo_trancado), TAMANHO_BLOCO)
 
-    # Prepara a cifra para descriptografar, usando a chave e o IV corretos.
-    cipher = AES.new(derived_key, AES.MODE_CBC, iv)
-
-    # Descriptografa e remove os bytes extras do padding para restaurar a mensagem original.
-    decrypted_bytes = unpad(cipher.decrypt(ciphertext), BLOCK_SIZE)
-
-    return decrypted_bytes
+    return bytes_limpos
